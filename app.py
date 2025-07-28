@@ -86,7 +86,7 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
             if planet != sector["rulingPlanet"] and random.random() < 0.7:
                 continue
                 
-            transit_days = sorted(random.sample(range(1, num_days+1), random.randint(1, 3))
+            transit_days = sorted(random.sample(range(1, num_days+1), random.randint(1, 3)))
             for day in transit_days:
                 aspects = [
                     {
