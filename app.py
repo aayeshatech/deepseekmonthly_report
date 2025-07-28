@@ -339,9 +339,7 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
             sentiment_df = pd.DataFrame(report["dailySentiment"])
             
             # Add day names
-            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + 
-                                     str(report["month"]) + "-" + str(report["year"]), 
-                                     format="%d-%m-%Y")
+            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + str(report["month"]) + "-" + str(report["year"]), format="%d-%m-%Y")
             sentiment_df["Day"] = sentiment_df["Date"].dt.day_name()
             
             st.dataframe(
@@ -408,9 +406,7 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
             sentiment_df = pd.DataFrame(report["dailySentiment"])
             
             # Add day names
-            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + 
-                                     str(report["month"]) + "-" + str(report["year"]), 
-                                     format="%d-%m-%Y")
+            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + str(report["month"]) + "-" + str(report["year"]), format="%d-%m-%Y")
             sentiment_df["Day"] = sentiment_df["Date"].dt.day_name()
             
             st.dataframe(
