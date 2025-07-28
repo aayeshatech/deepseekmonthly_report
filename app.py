@@ -22,7 +22,9 @@ PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Rahu
 ASPECTS = ["Conjunction", "Opposition", "Square", "Trine", "Sextile"]
 
 SECTORS = [
+    {"name": "Nifty 50", "symbols": ["NIFTY50"], "rulingPlanet": "Sun"},
     {"name": "Banking & Finance", "symbols": ["HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK", "AXISBANK"], "rulingPlanet": "Jupiter"},
+    {"name": "Private Banks", "symbols": ["HDFCBANK", "ICICIBANK", "KOTAKBANK", "AXISBANK", "INDUSINDBK"], "rulingPlanet": "Jupiter"},
     {"name": "IT", "symbols": ["TCS", "INFY", "WIPRO", "HCLTECH", "TECHM"], "rulingPlanet": "Mercury"},
     {"name": "Automobile", "symbols": ["MARUTI", "TATAMOTORS", "M&M", "BAJAJ-AUTO", "HEROMOTOCO"], "rulingPlanet": "Venus"},
     {"name": "Energy", "symbols": ["RELIANCE", "ONGC", "IOC", "BPCL", "GAIL"], "rulingPlanet": "Sun"},
@@ -75,7 +77,8 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
             "sector": sector,
             "planetaryTransits": [],
             "keyDates": [],
-            "stockRecommendations": []
+            "stockRecommendations": [],
+            "dailySentiment": []  # Added for daily sentiment report
         }
         
         # Generate transits more efficiently
@@ -83,7 +86,7 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
             if planet != sector["rulingPlanet"] and random.random() < 0.7:
                 continue
                 
-            transit_days = sorted(random.sample(range(1, num_days+1), random.randint(1, 3)))
+            transit_days = sorted(random.sample(range(1, num_days+1), random.randint(1, 3))
             for day in transit_days:
                 aspects = [
                     {
@@ -153,6 +156,36 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
                 "confidence": random.choice(["High", "Medium", "Low"]),
                 "aspects": [f"{random.choice(PLANETS)}-{random.choice(ASPECTS)}" for _ in range(random.randint(1, 2))]
             })
+        
+        # Generate daily sentiment for the entire month
+        for day in range(1, num_days + 1):
+            day_transits = [t for t in report["planetaryTransits"] if t["day"] == day]
+            
+            bullish_factors = sum(
+                1 for t in day_transits 
+                if any(a["nature"] == "benefic" for a in t["aspects"]) 
+                or t["planet"] in ["Jupiter", "Venus"]
+            )
+            
+            bearish_factors = sum(
+                1 for t in day_transits 
+                if any(a["nature"] == "malefic" for a in t["aspects"]) 
+                or t["planet"] in ["Saturn", "Mars", "Rahu", "Ketu"]
+            )
+            
+            if bullish_factors > bearish_factors:
+                sentiment = "Bullish"
+            elif bearish_factors > bullish_factors:
+                sentiment = "Bearish"
+            else:
+                sentiment = "Neutral"
+            
+            report["dailySentiment"].append({
+                "day": day,
+                "sentiment": sentiment,
+                "planets": [t["planet"] for t in day_transits],
+                "key_aspects": [f"{t['planet']} in {t['sign']}" for t in day_transits]
+            })
     
     else:  # Symbol-specific report
         sector = SYMBOL_TO_SECTOR.get(selected_symbol)
@@ -170,7 +203,8 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
             "commodity": commodity["name"] if commodity else None,
             "rulingPlanet": (sector or commodity)["rulingPlanet"],
             "keyDates": [],
-            "historicalPatterns": []
+            "historicalPatterns": [],
+            "dailySentiment": []  # Added for daily sentiment report
         }
         
         # Generate signals more efficiently
@@ -203,6 +237,21 @@ def generate_monthly_report(selected_month, selected_year, report_type, selected
                 "priceChange": round(random.uniform(-10, 10), 2),
                 "duration": f"{random.randint(1, 5)} days"
             })
+        
+        # Generate daily sentiment for the entire month
+        for day in range(1, num_days + 1):
+            day_signals = [d for d in report["keyDates"] if d["day"] == day]
+            
+            if day_signals:
+                sentiment = "Bullish" if day_signals[0]["impact"] == "bullish" else "Bearish"
+            else:
+                sentiment = random.choice(["Bullish", "Bearish", "Neutral"])
+            
+            report["dailySentiment"].append({
+                "day": day,
+                "sentiment": sentiment,
+                "aspects": [d["aspects"] for d in report["keyDates"] if d["day"] == day]
+            })
     
     return report
 
@@ -219,7 +268,7 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
         col2.metric("📉 Bearish Days", bearish_days)
         col3.metric("🪐 Ruling Planet", report["sector"]["rulingPlanet"])
         
-        tab1, tab2, tab3 = st.tabs(["Planetary Transits", "Key Trading Dates", "Stock Recommendations"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Planetary Transits", "Key Trading Dates", "Stock Recommendations", "Daily Sentiment"])
         
         with tab1:
             st.markdown("""
@@ -284,6 +333,30 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
                         st.write(f"- {aspect}")
                     
                     st.write(f"**Suggested Exit Day:** {stock['exitDay']}")
+        
+        with tab4:
+            st.write("### Daily Market Sentiment")
+            sentiment_df = pd.DataFrame(report["dailySentiment"])
+            
+            # Add day names
+            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + 
+                                     str(report["month"]) + "-" + str(report["year"]), 
+                                     format="%d-%m-%Y")
+            sentiment_df["Day"] = sentiment_df["Date"].dt.day_name()
+            
+            st.dataframe(
+                sentiment_df[["day", "Day", "sentiment", "planets", "key_aspects"]]
+                .rename(columns={"day": "Day No", "sentiment": "Sentiment", "planets": "Active Planets", 
+                                "key_aspects": "Key Aspects"})
+                .style.applymap(
+                    lambda val: 'background-color: #d4edda' if val == 'Bullish' else 
+                              'background-color: #f8d7da' if val == 'Bearish' else 
+                              'background-color: #e2e3e5',
+                    subset=['Sentiment']
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
     
     else:  # Symbol-specific report
         st.subheader(f"📈 {selected_symbol} Monthly Trading Analysis")
@@ -294,7 +367,7 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
         cols[1].write(f"**Ruling Planet:** {report['rulingPlanet']}")
         cols[1].write(f"**Analysis Period:** {date(1900, report['month'], 1).strftime('%B')} {report['year']}")
         
-        tab1, tab2 = st.tabs(["Trading Signals", "Historical Patterns"])
+        tab1, tab2, tab3 = st.tabs(["Trading Signals", "Historical Patterns", "Daily Sentiment"])
         
         with tab1:
             st.write("### Daily Trading Signals")
@@ -329,6 +402,29 @@ def display_report(report, report_type, selected_sector=None, selected_symbol=No
                         <p><strong>Market Impact:</strong> {pattern['impact'].capitalize()}</p>
                     </div>
                 """, unsafe_allow_html=True)
+        
+        with tab3:
+            st.write("### Daily Market Sentiment")
+            sentiment_df = pd.DataFrame(report["dailySentiment"])
+            
+            # Add day names
+            sentiment_df["Date"] = pd.to_datetime(sentiment_df["day"].astype(str) + "-" + 
+                                     str(report["month"]) + "-" + str(report["year"]), 
+                                     format="%d-%m-%Y")
+            sentiment_df["Day"] = sentiment_df["Date"].dt.day_name()
+            
+            st.dataframe(
+                sentiment_df[["day", "Day", "sentiment", "aspects"]]
+                .rename(columns={"day": "Day No", "sentiment": "Sentiment", "aspects": "Key Aspects"})
+                .style.applymap(
+                    lambda val: 'background-color: #d4edda' if val == 'Bullish' else 
+                              'background-color: #f8d7da' if val == 'Bearish' else 
+                              'background-color: #e2e3e5',
+                    subset=['Sentiment']
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
 
 def main():
     """Optimized main function with faster loading"""
